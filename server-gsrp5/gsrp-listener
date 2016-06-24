@@ -1,0 +1,2 @@
+cd /home/nchesnokov/projects/opengsrp/gsrp
+/usr/bin/python3 ./listener.py

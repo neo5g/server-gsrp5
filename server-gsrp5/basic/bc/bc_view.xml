@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<gsrp>
+	<data>
+		<record id="bc_module_list" model="bc.ui.view">
+			<column name="name">bc.module.list</column>
+			<column name="model">bc.module</column>
+			<column name="arch" type="xml">
+				<list>
+					<field name="bc_module_group_id" widget="one2many_list"/>
+					<field name="name"/>
+				</list>
+			</column>
+		</record>
+		<record id="bc_model_form" model="bc.ui.view">
+			<column name="name">bc.module.form</column>
+			<column name="model">bc.model</column>
+			<column name="arch" type="xml">
+				<form>
+					<page>
+						<field name="bc_model_group_id"/>
+						<field name="name"/>
+						<field name="model_fields"/>
+					</page>
+				</form>
+			</column>
+		</record>
+
+	</data>
+</gsrp>

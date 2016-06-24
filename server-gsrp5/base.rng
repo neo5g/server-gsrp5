@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+   <grammar xmlns="http://relaxng.org/ns/structure/1.0">
+     <start>
+		<element name="gsrp">
+			<element name="data">
+				<oneOrMore>
+					<element name="record">
+						<attribute name="id"></attribute>
+						<attribute name="model"></attribute>
+						<oneOrMore>
+							<element name="column">
+								<attribute name="name"></attribute>
+								<optional>
+									<attribute name="type">
+										<choice>
+											<value type="string">xml</value>
+											<value type="string">html</value>
+										</choice>
+									</attribute>
+								</optional>
+								<choice>
+								<text />
+								<ref name="search"/>
+								<ref name="list"/>
+								<ref name="form"/>
+								<ref name="graph"/>
+								<ref name="tree"/>
+								<ref name="gantt"/>
+								<ref name="calendar"/>
+								<ref name="kanban"/>
+								<ref name="mdx"/>
+								</choice>
+							</element>
+						</oneOrMore>
+					</element>
+				</oneOrMore>
+			</element>
+		</element>
+     </start>
+ 
+     <define name="field">
+     <oneOrMore>
+		<element name="field">
+		<attribute name="name"><text/></attribute>
+		<optional>
+			<attribute name="widget">
+				<choice>
+					<value type="string">one2many_form</value>
+					<value type="string">one2many_list</value>
+					<value type="string">one2many_graph</value>
+					<value type="string">one2many_gantt</value>
+					<value type="string">one2many_calendar</value>
+				</choice>
+			</attribute>
+		</optional>
+     <text/>
+     </element>
+     </oneOrMore>
+     </define>
+
+	<define name="page.class" combine="choice">
+		<ref name="field"/>
+	</define>
+	
+	<define name="page.class" combine="choice">
+		<zeroOrMore>
+			<element name="page">
+				<ref name="field"/>
+			</element>
+		</zeroOrMore>
+	</define>
+
+	<define name="page">
+		<ref name="page.class"/>
+	</define>
+   <include href="viewsearch.rng"/>
+   </grammar>

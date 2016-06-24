@@ -1,0 +1,316 @@
+# Russian (Russia) translations for PROJECT.
+# Copyright (C) 2016 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2016-03-11 14:33+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: ru_RU <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 1.3\n"
+
+#: listener.py:56
+msgid "GSRP Listener stoped"
+msgstr ""
+
+#: listener.py:76 listener.py:92 listener.py:109 listener.py:125
+#: listener.py:155 listener.py:184 listener.py:193 listener.py:209
+#: listener.py:227 listener.py:245
+msgid "Forking"
+msgstr "Порожденного процесса"
+
+#: listener.py:80 listener.py:96 listener.py:113 listener.py:129
+#: listener.py:157 listener.py:186 listener.py:197 listener.py:213
+#: listener.py:231 listener.py:249
+msgid "Threading"
+msgstr "Нити роцесса"
+
+#: listener.py:86
+#, python-format
+msgid "service tcprpc running on %s port %s in mode %s"
+msgstr "Сервис tcprpc запущен на %s порт %s в режиме %s"
+
+#: listener.py:102
+#, python-format
+msgid "service tcpv6rpc running on %s port %s in mode %s"
+msgstr "Сервис tcpv6rpc запущен на %s порт %s в режиме %s"
+
+#: listener.py:119
+#, python-format
+msgid "service ssltcp running on %s port %s in mode %s"
+msgstr ""
+
+#: listener.py:135
+#, python-format
+msgid "service ssltcpv6 running on %s port %s in mode %s"
+msgstr ""
+
+#: listener.py:158
+#, python-format
+msgid "service soaprpc running on %s port %s in mode %s"
+msgstr ""
+
+#: listener.py:187
+#, python-format
+msgid "service sslsoaprpc running on %s port %s in mode %s"
+msgstr ""
+
+#: listener.py:203
+#, python-format
+msgid "service utprpc running on %s port %s in mode %s"
+msgstr ""
+
+#: listener.py:219
+#, python-format
+msgid "service udpv6rpc running on %s port %s in mode %s"
+msgstr ""
+
+#: listener.py:237
+#, python-format
+msgid "service unixrpc running on %s  in mode %s"
+msgstr ""
+
+#: listener.py:255
+#, python-format
+msgid "service unixudprpc running on %s  in mode %s"
+msgstr ""
+
+#: listener.py:265
+msgid "Listener of global system resource planned"
+msgstr ""
+
+#: basic/ddl/schema.py:44
+#, python-format
+msgid "New name of schema equal to old name: (%s == %s)"
+msgstr ""
+
+#: basic/ddl/schema.py:48 managers/pgdbddlmanager.py:361
+#, python-format
+msgid "Schema %s is exist"
+msgstr ""
+
+#: basic/ddl/schema.py:53 basic/ddl/schema.py:69 managers/pgdbddlmanager.py:332
+#: managers/pgdbddlmanager.py:382
+#, python-format
+msgid "Schema %s is not exist"
+msgstr ""
+
+#: basic/ddl/schema.py:60
+#, python-format
+msgid "RENAME SCHEMA %s TO %s"
+msgstr ""
+
+#: basic/ddl/schema.py:61
+#, python-format
+msgid "Schema %s was renamed to %s"
+msgstr ""
+
+#: basic/ddl/schema.py:81 managers/pgdbddlmanager.py:349
+#, python-format
+msgid "ALTER SCHEMA %s"
+msgstr ""
+
+#: basic/ddl/schema.py:82 managers/pgdbddlmanager.py:350
+#, python-format
+msgid "Schema %s was atered"
+msgstr ""
+
+#: basic/ddl/schema.py:85 managers/pgdbddlmanager.py:353
+#, python-format
+msgid "Schema %s not changed"
+msgstr ""
+
+#: cli/SocketClient.py:129 cli/SocketClient.py:195
+#, python-format
+msgid "Error connect to server host:%s port:%s"
+msgstr ""
+
+#: cli/packer.py:84 tools/packer.py:84
+#, python-format
+msgid "Error reading socket. Connection closed host:%s port:%s"
+msgstr ""
+
+#: cli/packer.py:86 tools/packer.py:86
+#, python-format
+msgid "Error reading socket host:%s port:%s"
+msgstr ""
+
+#: managers/dbapimanager.py:98 managers/pgdbapimanager.py:99
+#, python-format
+msgid "Database fields %s of model %s not avaliable"
+msgstr ""
+
+#: managers/dbapimanager.py:125 managers/dbapimanager.py:153
+#: managers/dbapimanager.py:193 managers/pgdbapimanager.py:126
+#: managers/pgdbapimanager.py:154 managers/pgdbapimanager.py:194
+#, python-format
+msgid "Fields %s of model %s not avaliable"
+msgstr ""
+
+#: managers/dbapimanager.py:157 managers/pgdbapimanager.py:158
+#, python-format
+msgid "Fields %s of model %s is required. Field not present"
+msgstr ""
+
+#: managers/dbapimanager.py:196 managers/pgdbapimanager.py:197
+#, python-format
+msgid "Fields %s of model %s is required. Value not present"
+msgstr ""
+
+#: managers/dbapimanager.py:199 managers/pgdbapimanager.py:200
+#, python-format
+msgid "Fields %s of model %s is invalid name"
+msgstr ""
+
+#: managers/modelmanager.py:21
+#, python-format
+msgid "app.model:Model %s is exist"
+msgstr ""
+
+#: managers/modelmanager.py:27
+#, python-format
+msgid "app.model:Model %s is not exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:44 managers/pgdbddlmanager.py:139
+#, python-format
+msgid "Role %s is not exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:89
+#, python-format
+msgid "Role %s was altered"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:92
+#, python-format
+msgid "Role %s not changed"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:99
+#, python-format
+msgid "Role %s is exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:133
+#, python-format
+msgid "Role %s was creared"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:143
+#, python-format
+msgid "Role %s was droped"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:181
+#, python-format
+msgid "Tablespace %s was altered"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:183
+#, python-format
+msgid "Tablespace %s not changed"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:189
+#, python-format
+msgid "Tablespace %s is exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:203
+#, python-format
+msgid "Tablespace %s was created"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:209
+#, python-format
+msgid "Tablespace %s is not exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:213
+#, python-format
+msgid "Tablespace %s was droped"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:243 managers/pgdbddlmanager.py:307
+#, python-format
+msgid "Database %s is not exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:266
+#, python-format
+msgid "ALTER DATABASE %s"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:267
+#, python-format
+msgid "Database %s was atered"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:270
+#, python-format
+msgid "Database %s not changed"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:277
+#, python-format
+msgid "Database %s is exist"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:301
+#, python-format
+msgid "Database %s was created"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:311
+#, python-format
+msgid "Database %s was droped"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:373
+#, python-format
+msgid "Schema %s was created"
+msgstr ""
+
+#: managers/pgdbddlmanager.py:386
+#, python-format
+msgid "Schema %s was droped"
+msgstr ""
+
+#: orm/model.py:141
+msgid "Invalid table name"
+msgstr ""
+
+#: services/cursor.py:166
+#, python-format
+msgid "You logged as %s"
+msgstr ""
+
+#: services/cursor.py:168
+msgid "You a not logged. Invalid username or password"
+msgstr ""
+
+#: services/cursor.py:177
+#, python-format
+msgid "User %s is logout"
+msgstr ""
+
+#: services/cursor.py:179
+msgid "You a not logged"
+msgstr ""
+
+#: services/netrpc.py:53
+#, python-format
+msgid "Connection closed host:%s port:%s"
+msgstr ""
+

@@ -1,0 +1,15 @@
+[Unit]
+Description=Global System Resource Planed  Server Connector
+
+# Remove postgresql.service if db is running on another host.
+After=syslog.target network.target postgresql.service
+
+[Service]
+User=gsrp
+Group = gsrp
+ExecStart=/usr/bin/gsrp-connector \
+    -c /etc/gsrp/gsrp-connector.conf \
+    --logfile=/var/log/gsrp/gsrp-connector.log
+
+[Install]
+WantedBy=multi-user.target

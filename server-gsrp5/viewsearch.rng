@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+   <grammar xmlns="http://relaxng.org/ns/structure/1.0">
+     <define name="search">
+		<element name="search">
+		<ref name="field"/>
+		</element>
+     </define>
+     <define name="list">
+		<element name="list">
+		<ref name="page"/>
+		</element>
+     </define>
+     
+     <define name="form">
+		<element name="form">
+			<ref name="page"/>
+		</element>
+     </define>
+
+     <define name="graph">
+		<element name="graph">
+		<ref name="field"/>
+		</element>
+     </define>
+
+     <define name="tree">
+		<element name="tree">
+		<ref name="field"/>
+		</element>
+     </define>
+
+     <define name="gantt">
+		<element name="gantt">
+		<ref name="field"/>
+		</element>
+     </define>
+
+     <define name="calendar">
+		<element name="calendar">
+		<ref name="field"/>
+		</element>
+     </define>
+
+     <define name="kanban">
+		<element name="kanban">
+		<ref name="field"/>
+		</element>
+     </define>
+
+     <define name="mdx">
+		<element name="mdx">
+		<ref name="field"/>
+		</element>
+     </define>
+</grammar>
