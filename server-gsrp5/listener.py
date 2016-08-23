@@ -10,6 +10,7 @@ import logging
 import ssl
 import time
 from socketserver import _ServerSelector
+import selectors
 from logging.handlers import RotatingFileHandler
 from multiprocessing import Process, Pool, freeze_support, cpu_count, active_children
 
@@ -150,7 +151,9 @@ def main():
 	_logger.addHandler(streamhandler)
 	_logger.addHandler(rotatingfilehandler)
 
-	epoll = select.epoll()
+	#epoll = select.epoll()
+	epoll = _ServerSelector()
+	
 	
 	for key in config['globals'].keys():
 		if key in ('tcprpc','tcpv6rpc') and config['globals'][key]:
@@ -160,32 +163,29 @@ def main():
 			s.bind((config[key]['host'],config[key]['port']))
 			s.listen(5)
 			__list_sockets__[s.fileno()] = {'socket':s,'service':key,'handler':__list_servicies__[key]['handler'],'isService':True}
-			epoll.register(s.fileno(), select.EPOLLIN)
+			epoll.register(s.fileno(),selectors.EVENT_READ)
 			_logger.info(_("service %s running on %s port %s") % (key, config[key]['host'], config[key]['port'])) 
 	if __list_sockets__.keys().__len__() > 0:
 		while not _is_shutdown:
-			events = _eintr_retry(epoll.poll)
-			for fileno, event in events:
-				if event & select.EPOLLRDHUP:
-					if fileno in __list_sockets__:
-						__list_sockets__[fileno]['socket'].close()
-						del __list_sockets__[fileno]
-				elif event & select.EPOLLIN:
-					if fileno in __list_sockets__ and 'isService' in __list_sockets__[fileno] and __list_sockets__[fileno]['isService']:
-						obj,info = __list_sockets__[fileno]['socket'].accept()
+			events = epoll.select()
+			print('EVENTS:',events	)
+			for key, event in events:
+				if event & selectors.EVENT_READ:
+					if key.fd in __list_sockets__ and 'isService' in __list_sockets__[key.fd] and __list_sockets__[key.fd]['isService']:
+						obj,info = __list_sockets__[key.fd]['socket'].accept()
 						print('ACCEPT:',obj.fileno())
-						__list_sockets__[obj.fileno()] = {'socket':obj,'addr_info':info,'handler':__list_servicies__[__list_sockets__[fileno]['service']]['handler'],'service':__list_sockets__[fileno]['service']}
-						epoll.register(obj.fileno(), select.EPOLLIN|select.EPOLLRDHUP)
+						__list_sockets__[obj.fileno()] = {'socket':obj,'addr_info':info,'handler':__list_servicies__[__list_sockets__[key.fd]['service']]['handler'],'service':__list_sockets__[key.fd]['service']}
+						epoll.register(obj.fileno(), selectors.EVENT_READ)
 					else:
-						print('__LIST_SOCKETS',fileno,__list_sockets__)
-						process = Process(target=__list_servicies__[__list_sockets__[fileno]['service']]['handler'],name=__list_sockets__[fileno]['service'],args=(__list_sockets__[fileno]['socket'], __list_sockets__[fileno]['addr_info'], Packer),daemon = config[__list_sockets__[fileno]['service']]['daemon_threads'])
+						print('__LIST_SOCKETS',key.fd,__list_sockets__)
+						process = Process(target=__list_servicies__[__list_sockets__[key.fd]['service']]['handler'],name=__list_sockets__[key.fd]['service'],args=(__list_sockets__[key.fd]['socket'], __list_sockets__[key.fd]['addr_info'], Packer),daemon = config[__list_sockets__[key.fd]['service']]['daemon_threads'])
 						process.start()
 						process.join(0)
 						__list_processes__[process.pid] = process
 						print('PROCESSES:',process.pid,__list_processes__)
-						epoll.unregister(fileno)
-						__list_sockets__[fileno]['socket'].close()
-						del __list_sockets__[fileno]
+						epoll.unregister(key.fd)
+						__list_sockets__[key.fd]['socket'].close()
+						del __list_sockets__[key.fd]
 	else:
 		_logger.info(_("Enable services not defined")) 
 
