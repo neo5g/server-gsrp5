@@ -21,8 +21,8 @@ class Cursor(object):
 			self.password = password
 			self.host = host
 			self.port = port
-			self.conn = psycopg2.connect(dsn = self.dsn, database = self.database, user = self.user, password = self.password,connection_factory = psycopg2.extensions.connection)
-			self.conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
+			self.conn = psycopg2.connect(dsn = self.dsn, database = self.database, user = self.user, password = self.password, host=self.host, port=self.port, connection_factory = psycopg2.extensions.connection)
+			#self.conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
 			return True
 
 	def _cursor(self):

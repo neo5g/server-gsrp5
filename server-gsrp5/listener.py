@@ -117,8 +117,8 @@ def handle(obj, info, packer):
 			_logger.critical(traceback.format_exc())
 			print('TRACEBACK',traceback.format_exc())
 			server.packer._writetofp(['E', traceback.format_exc()],server.wfile)
-	ep.unregister(obj.fileno())
-	ep.close()
+	selector.unregister(obj.fileno())
+	selector.close()
 
 
 def main():
