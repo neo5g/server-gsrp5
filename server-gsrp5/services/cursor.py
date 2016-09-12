@@ -8,19 +8,24 @@ from tools.translations import trlocal as _
 class Cursor(object):
 	conn = None
 	cr = None
-	def _connect(self, dsn, database, user, password, host, port):
+	def __init__(self, dsn, database, user, passowrd, host, port):
+		self.dsn = dsn
+		self.database = database
+		self.user = user
+		self.password = password
+		self.host = host
+		self.port = port
+
+	def __reduce__(self):
+		return(self.dsn,self,database,self.user,self.passowrd,self.host,self.port)
+
+	def _connect(self):
 		if self.conn:
 			if self.conn.closed:
 				self.conn = psycopg2.connect(dsn = self.dsn, database = self.database, user = self.user, password = self.password, host = self.host, port = self.port, connection_factory = psycopg2.extensions.connection)
 			else:
 				return True
 		else:
-			self.dsn = dsn
-			self.database = database
-			self.user = user
-			self.password = password
-			self.host = host
-			self.port = port
 			self.conn = psycopg2.connect(dsn = self.dsn, database = self.database, user = self.user, password = self.password, host=self.host, port=self.port, connection_factory = psycopg2.extensions.connection)
 			#self.conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_READ_COMMITTED)
 			return True

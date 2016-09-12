@@ -122,7 +122,7 @@ def handle(obj, info, packer):
 
 
 def main():
-	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle}}
+	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':whandle},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':whandle}}
 	pwd = os.getcwd()
 	CONFIG_PATH= opj(pwd,'conf')
 	CONFIG_FILE = opj(pwd,'conf/gsrp-listener.conf')
