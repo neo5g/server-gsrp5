@@ -33,6 +33,7 @@ if not "EPOLLRDHUP" in dir(select):
 
 _logger = logging.getLogger("listener."+__name__)
 
+epoll = _ServerSelector()
 
 class Server(object):
 	_BaseServer_shutdown_request = False
@@ -62,67 +63,78 @@ signal.signal(signal.SIGINT, stop)
 signal.signal(signal.SIGQUIT, stop)
 signal.signal(signal.SIGCHLD, child)
 
-def whandle(server,umsg):
-	print('WHANDLE:',dir(server))
+def whandle(umsg):
+	server = managers._server
 	try:
+		_logger.info('IMessage: %s' % (umsg,))
+		if umsg and len(umsg) == 1:
+			rmsg = server._dispatcher._execute(umsg[0])
+		elif umsg and len(umsg) == 2:
+			rmsg = server._dispatcher._execute(umsg[0],umsg[1])
+		_logger.info('RMessage: %s' % (rmsg,))
+		return rmsg
+	except:
+		e = traceback.format_exc()
+		_logger.critical(e)
+		print('TRACEBACK',e)
+		return ['E', e]
+
+
+def phandle(key,mask):
+	process = Process(target=handle,name='handle- %s' % key.fd,args=(key.fd,mask),daemon=True)
+	process.start()
+
+
+def handle(key, mask):
+	try:
+		obj = __list_sockets__[key.fd]
+		server = obj['server']
 		umsg = server.packer._readfromfp(server, server.rfile)
-		if server._BaseServer_shutdown_request:
-			ci = obj.getsockname()
-			_logger.info(_("Connection closed host:%s port:%s") % (ci[0],ci[1]))
-			return False
-		else:
-			_logger.info('IMessage: %s' % (umsg,))
-			if umsg and len(umsg) == 1:
-				rmsg = server._dispatcher._execute(umsg[0])
-			elif umsg and len(umsg) == 2:
-				rmsg = server._dispatcher._execute(umsg[0],umsg[1])
-			_logger.info('RMessage: %s' % (rmsg,))
-			l = server.packer._writetofp(rmsg, server.wfile)
-			return rmsg.__len__() + 10 == l
+		if len(umsg) == 0:
+			server.rfile.close()
+			server.wfile.close()
+			obj['socket'].close()
+			epoll.unregister(key.fd)
+			del __list_sockets__[key.fd]
+			_logger.info('Connection closed host %s port %s' % (obj['info'][0],obj['info'][1]))
+			return
+			
+		res = pool.apply_async(func = whandle,args=(umsg,),callback=None) 
+		rmsg = res.get(timeout=900)
+		server.packer._writetofp(rmsg, server.wfile)
 	except:
 		_logger.critical(traceback.format_exc())
 		print('TRACEBACK',traceback.format_exc())
-		server.packer._writetofp(['E', traceback.format_exc()],wfile)
-		return ['E', traceback.format_exc()]
+		server.packer._writetofp(['E', traceback.format_exc()],server.wfile)
 
-def handle(obj, info, packer):
-	ci = obj.getsockname()
-	_logger.info(_("Connection on host:%s port:%s") % (ci[0],ci[1]))
+def initializer():
+	from tools.packer import Packer
+	from modules.loading import add_module_paths
+	import managers
+	from dispatcher.dispatcher import Dispatcher
+	add_module_paths(os.getcwd(),{'basic':None,'addons':None})
 	server = Server()
 	server._dispatcher = Dispatcher(managers.manager.MetaManager.__list_managers__,os.getcwd())
-	server.packer = packer()
-	server.rfile = obj.makefile(mode='rb', buffering = -1)
-	server.wfile = obj.makefile(mode='wb', buffering = 0)
-	selector = _ServerSelector()
-	selector.register(obj.fileno(),selectors.EVENT_READ)
-	#ep = select.epoll()
-	#ep.register(obj.fileno(),select.EPOLLIN|select.EPOLLRDHUP)
-	while not server._BaseServer_shutdown_request:
-		try:
-			ready = selector.select(900)
-			if ready:
-				umsg = server.packer._readfromfp(server, server.rfile)
-				if server._BaseServer_shutdown_request:
-					ci = obj.getsockname()
-					_logger.info(_("Connection closed host:%s port:%s") % (ci[0],ci[1]))
-					break
-					_logger.info('IMessage: %s' % (umsg,))
-				if umsg and len(umsg) == 1:
-					rmsg = server._dispatcher._execute(umsg[0])
-				elif umsg and len(umsg) == 2:
-					rmsg = server._dispatcher._execute(umsg[0],umsg[1])
-				_logger.info('RMessage: %s' % (rmsg,))
-				server.packer._writetofp(rmsg, server.wfile)
-		except:
-			_logger.critical(traceback.format_exc())
-			print('TRACEBACK',traceback.format_exc())
-			server.packer._writetofp(['E', traceback.format_exc()],server.wfile)
-	selector.unregister(obj.fileno())
-	selector.close()
+	server.packer = Packer()
+	managers._server = server
 
+
+def accept(key,mask):
+	conn, addr = __list_sockets__[key.fd]['socket'].accept()
+	conn.setblocking(False)
+	server = Server()
+	server.packer = Packer()
+	server.rfile = conn.makefile(mode='rb', buffering = -1)
+	server.wfile = conn.makefile(mode='wb', buffering = 0)
+	ci = conn.getsockname()
+	__list_sockets__[conn.fileno()] = {'socket':conn,'server':server,'address':addr,'info':ci}
+	epoll.register(conn.fileno(),selectors.EVENT_READ,handle)
+	_logger.info(_("Connect on host %s port %s") % (ci[0],ci[1]))
+
+pool = Pool(initializer=initializer)
 
 def main():
-	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':whandle},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':whandle}}
+	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle}}
 	pwd = os.getcwd()
 	CONFIG_PATH= opj(pwd,'conf')
 	CONFIG_FILE = opj(pwd,'conf/gsrp-listener.conf')
@@ -151,10 +163,6 @@ def main():
 	_logger.addHandler(streamhandler)
 	_logger.addHandler(rotatingfilehandler)
 
-	#epoll = select.epoll()
-	epoll = _ServerSelector()
-	
-	
 	for key in config['globals'].keys():
 		if key in ('tcprpc','tcpv6rpc') and config['globals'][key]:
 			s=socket.socket(__list_servicies__[key]['address_family'],__list_servicies__[key]['socket_type'])
@@ -162,30 +170,17 @@ def main():
 				s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
 			s.bind((config[key]['host'],config[key]['port']))
 			s.listen(5)
-			__list_sockets__[s.fileno()] = {'socket':s,'service':key,'handler':__list_servicies__[key]['handler'],'isService':True}
-			epoll.register(s.fileno(),selectors.EVENT_READ)
+			__list_sockets__[s.fileno()] = {'socket':s,'service':key}
+			s.setblocking(False)
+			epoll.register(s.fileno(),selectors.EVENT_READ,accept)
 			_logger.info(_("service %s running on %s port %s") % (key, config[key]['host'], config[key]['port'])) 
+
 	if __list_sockets__.keys().__len__() > 0:
 		while not _is_shutdown:
 			events = epoll.select()
-			print('EVENTS:',events	)
-			for key, event in events:
-				if event & selectors.EVENT_READ:
-					if key.fd in __list_sockets__ and 'isService' in __list_sockets__[key.fd] and __list_sockets__[key.fd]['isService']:
-						obj,info = __list_sockets__[key.fd]['socket'].accept()
-						print('ACCEPT:',obj.fileno())
-						__list_sockets__[obj.fileno()] = {'socket':obj,'addr_info':info,'handler':__list_servicies__[__list_sockets__[key.fd]['service']]['handler'],'service':__list_sockets__[key.fd]['service']}
-						epoll.register(obj.fileno(), selectors.EVENT_READ)
-					else:
-						print('__LIST_SOCKETS',key.fd,__list_sockets__)
-						process = Process(target=__list_servicies__[__list_sockets__[key.fd]['service']]['handler'],name=__list_sockets__[key.fd]['service'],args=(__list_sockets__[key.fd]['socket'], __list_sockets__[key.fd]['addr_info'], Packer),daemon = config[__list_sockets__[key.fd]['service']]['daemon_threads'])
-						process.start()
-						process.join(0)
-						__list_processes__[process.pid] = process
-						print('PROCESSES:',process.pid,__list_processes__)
-						epoll.unregister(key.fd)
-						__list_sockets__[key.fd]['socket'].close()
-						del __list_sockets__[key.fd]
+			for key, mask in events:
+				callback = key.data
+				callback(key,mask)
 	else:
 		_logger.info(_("Enable services not defined")) 
 

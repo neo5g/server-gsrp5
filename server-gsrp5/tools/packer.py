@@ -74,6 +74,8 @@ class Packer(object):
 
 	def _readfromfp(self, server, fp):
 		self._headers = fp.read(10).decode('utf-8')
+		if self._headers.__len__() != 10:
+			return []
 		self._msg_version_protocol = self._headers[:1]
 		self._msg_content_type = self._headers[1:2]
 		self._msg_length = int(self._headers[2:10], base = 16)

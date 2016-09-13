@@ -25,7 +25,7 @@ class pgdbManager(Manager):
 	cr = None
 
 	def __init__(self):
-		self.cr = Cursor()
+		self.cr = Cursor(dsn =None, database = "system", user = "root", password = None, host = "localhost", port = 26257)
 		super(pgdbManager,self).__init__()
 
 	def login(self, dsn =None, database = None, user = None, password = None, host = None, port = None):
