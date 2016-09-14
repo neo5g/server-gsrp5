@@ -9,6 +9,8 @@ import traceback
 import logging
 import ssl
 import time
+import threading
+import queue
 from socketserver import _ServerSelector
 import selectors
 from logging.handlers import RotatingFileHandler
@@ -38,9 +40,25 @@ epoll = _ServerSelector()
 class Server(object):
 	_BaseServer_shutdown_request = False
 
+
+def initializer():
+	from tools.packer import Packer
+	from modules.loading import add_module_paths
+	import managers
+	from dispatcher.dispatcher import Dispatcher
+	add_module_paths(os.getcwd(),{'basic':None,'addons':None})
+	server = Server()
+	server._dispatcher = Dispatcher(managers.manager.MetaManager.__list_managers__,os.getcwd())
+	server.packer = Packer()
+	managers._server = server
+
 def stop(signum,stack):
 	global __list_sockets__
 	global __list_processes__
+	ths = threading.enumerate()
+	for th in ths:
+		if th.getName() != "MainThread":
+			q.put(None)
 	for key in __list_sockets__.keys():
 		__list_sockets__[key]['socket'].close()
 	for key in __list_processes__.keys():
@@ -54,7 +72,7 @@ def child(signum,stack):
 	global __list_processes__
 	pid,status = os.wait()
 	if pid in __list_processes__:
-		print('PID,STATUS:',pid,status)
+		#print('PID,STATUS:',pid,status)
 		del __list_processes__[pid]
 	return False
 
@@ -76,14 +94,20 @@ def whandle(umsg):
 	except:
 		e = traceback.format_exc()
 		_logger.critical(e)
-		print('TRACEBACK',e)
 		return ['E', e]
 
 
-def phandle(key,mask):
-	process = Process(target=handle,name='handle- %s' % key.fd,args=(key.fd,mask),daemon=True)
-	process.start()
+def qhandle(key,mask):
+	q.put([key,mask])
+	q.join()
 
+def thandle():
+	while True:
+		d = q.get()
+		if d is None:
+			break
+		handle(d[0],d[1])
+		q.task_done()
 
 def handle(key, mask):
 	try:
@@ -104,20 +128,7 @@ def handle(key, mask):
 		server.packer._writetofp(rmsg, server.wfile)
 	except:
 		_logger.critical(traceback.format_exc())
-		print('TRACEBACK',traceback.format_exc())
 		server.packer._writetofp(['E', traceback.format_exc()],server.wfile)
-
-def initializer():
-	from tools.packer import Packer
-	from modules.loading import add_module_paths
-	import managers
-	from dispatcher.dispatcher import Dispatcher
-	add_module_paths(os.getcwd(),{'basic':None,'addons':None})
-	server = Server()
-	server._dispatcher = Dispatcher(managers.manager.MetaManager.__list_managers__,os.getcwd())
-	server.packer = Packer()
-	managers._server = server
-
 
 def accept(key,mask):
 	conn, addr = __list_sockets__[key.fd]['socket'].accept()
@@ -128,10 +139,11 @@ def accept(key,mask):
 	server.wfile = conn.makefile(mode='wb', buffering = 0)
 	ci = conn.getsockname()
 	__list_sockets__[conn.fileno()] = {'socket':conn,'server':server,'address':addr,'info':ci}
-	epoll.register(conn.fileno(),selectors.EVENT_READ,handle)
+	epoll.register(conn.fileno(),selectors.EVENT_READ,qhandle)
 	_logger.info(_("Connect on host %s port %s") % (ci[0],ci[1]))
 
 pool = Pool(initializer=initializer)
+q = queue.LifoQueue()
 
 def main():
 	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle}}
@@ -154,7 +166,7 @@ def main():
 		if options.__dict__['sids_path'] != SIDS_PATH:
 			SIDS_PATH = options.__dict__['sids_path']
 	config = configManager(CONFIG_FILE)
-	formatter = logging.Formatter(fmt = "%(asctime)s - %(name)s - %(levelname)s: -%(filename)s: %(module)s: - %(exc_info)s - %(process)d: - %(thread)s: - %(threadName)s: - %(message)s")
+	formatter = logging.Formatter(fmt = "%(asctime)s - %(name)s - %(levelname)s: -%(filename)s: %(module)s: - %(exc_info)s - процесс:%(process)d: - нить:%(thread)s: - %(threadName)s: - %(message)s")
 	streamhandler = logging.StreamHandler()
 	rotatingfilehandler = RotatingFileHandler('listener.log', maxBytes = 1024*1024, backupCount = 9, encoding = 'UTF-8')
 	streamhandler.setFormatter(formatter)
@@ -176,6 +188,10 @@ def main():
 			_logger.info(_("service %s running on %s port %s") % (key, config[key]['host'], config[key]['port'])) 
 
 	if __list_sockets__.keys().__len__() > 0:
+		for i in range(cpu_count()*2):
+			process = threading.Thread(target=thandle,name='handle- %03s' % i,daemon=False)
+			process.start()
+
 		while not _is_shutdown:
 			events = epoll.select()
 			for key, mask in events:
@@ -183,6 +199,7 @@ def main():
 				callback(key,mask)
 	else:
 		_logger.info(_("Enable services not defined")) 
+
 
 if __name__ == "__main__":
 	main()
