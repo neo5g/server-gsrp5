@@ -10,11 +10,10 @@ import logging
 import ssl
 import time
 import threading
-import queue
 from socketserver import _ServerSelector
 import selectors
 from logging.handlers import RotatingFileHandler
-from multiprocessing import Process, Pool, freeze_support, cpu_count, active_children
+from multiprocessing import Process,Queue,freeze_support, cpu_count, active_children
 
 from os.path import join as opj
 from tools.translations import trlocal as _
@@ -40,25 +39,13 @@ epoll = _ServerSelector()
 class Server(object):
 	_BaseServer_shutdown_request = False
 
-
-def initializer():
-	from tools.packer import Packer
-	from modules.loading import add_module_paths
-	import managers
-	from dispatcher.dispatcher import Dispatcher
-	add_module_paths(os.getcwd(),{'basic':None,'addons':None})
-	server = Server()
-	server._dispatcher = Dispatcher(managers.manager.MetaManager.__list_managers__,os.getcwd())
-	server.packer = Packer()
-	managers._server = server
-
 def stop(signum,stack):
 	global __list_sockets__
 	global __list_processes__
 	ths = threading.enumerate()
 	for th in ths:
 		if th.getName() != "MainThread":
-			q.put(None)
+			inq.put(None)
 	for key in __list_sockets__.keys():
 		__list_sockets__[key]['socket'].close()
 	for key in __list_processes__.keys():
@@ -72,7 +59,7 @@ def child(signum,stack):
 	global __list_processes__
 	pid,status = os.wait()
 	if pid in __list_processes__:
-		#print('PID,STATUS:',pid,status)
+		print('PID,STATUS:',pid,status)
 		del __list_processes__[pid]
 	return False
 
@@ -81,58 +68,97 @@ signal.signal(signal.SIGINT, stop)
 signal.signal(signal.SIGQUIT, stop)
 signal.signal(signal.SIGCHLD, child)
 
-def whandle(umsg):
-	server = managers._server
-	try:
-		_logger.info('IMessage: %s' % (umsg,))
-		if umsg and len(umsg) == 1:
-			rmsg = server._dispatcher._execute(umsg[0])
-		elif umsg and len(umsg) == 2:
-			rmsg = server._dispatcher._execute(umsg[0],umsg[1])
-		_logger.info('RMessage: %s' % (rmsg,))
-		return rmsg
-	except:
-		e = traceback.format_exc()
-		_logger.critical(e)
-		return ['E', e]
+
+inq = Queue()
+pinq = Queue()
+outq = Queue()
+
+lock = threading.Lock()
 
 
-def qhandle(key,mask):
-	q.put([key,mask])
-	q.join()
+# Start of new handlers
 
-def thandle():
-	while True:
-		d = q.get()
-		if d is None:
+def inqHandle(inq,pinq):
+	while True:		
+		lock.acquire()
+		km = inq.get()
+		if km is None:
+			lock.release()
 			break
-		handle(d[0],d[1])
-		q.task_done()
-
-def handle(key, mask):
-	try:
-		obj = __list_sockets__[key.fd]
-		server = obj['server']
-		umsg = server.packer._readfromfp(server, server.rfile)
-		if len(umsg) == 0:
+		#lock.acquire()
+		key,mask = km
+		print("key.fd in __list_sockets__",key.fd,key.fd in __list_sockets__)
+		if not key.fd in __list_sockets__:
+			lock.release()
+			continue
+		server = __list_sockets__[key.fd]['server']
+		print("server",server)
+		msg = server.packer._readfromfp(server, server.rfile)
+		if len(msg) == 0:
+			print("close:",key.fd)
 			server.rfile.close()
+			server.wfile.flush()
 			server.wfile.close()
+			obj = __list_sockets__[key.fd]
 			obj['socket'].close()
 			epoll.unregister(key.fd)
-			del __list_sockets__[key.fd]
 			_logger.info('Connection closed host %s port %s' % (obj['info'][0],obj['info'][1]))
-			return
-			
-		res = pool.apply_async(func = whandle,args=(umsg,),callback=None) 
-		rmsg = res.get(timeout=900)
-		server.packer._writetofp(rmsg, server.wfile)
-	except:
-		_logger.critical(traceback.format_exc())
-		server.packer._writetofp(['E', traceback.format_exc()],server.wfile)
+			if key.fd in __list_sockets__:
+				del __list_sockets__[key.fd]
+				print("unregister:\n",key.fd,'\n',__list_sockets__,'\n')
+			lock.release()
+			continue
 
+		imsg = [key.fd]
+		imsg.extend(msg)	
+		pinq.put(imsg)
+		lock.release()
+
+def outqHandle(poutq):
+
+	while True:
+		msg = poutq.get()
+		if msg is None:
+			break
+		chan = msg[0]
+		rmsg = msg[1:]
+		print("CHAN",chan,rmsg)
+		server = __list_sockets__[chan]['server']
+		server.packer._writetofp(rmsg, server.wfile)
+		
+
+def pinqHandle(pinq,outq):
+	dispatcher = Dispatcher(managers.manager.MetaManager.__list_managers__,os.getcwd())
+	while True:
+		msg = pinq.get()
+		if msg is None:
+			break
+		try:
+			chan = msg[0]
+			imsg = msg[1:]
+			rmsg = [chan]
+			_logger.info('IMessage: %s' % (imsg,))
+			if imsg and len(imsg) == 1:
+				rmsg.extend(dispatcher._execute(imsg[0]))
+			elif imsg and len(imsg) == 2:
+				rmsg.extend(dispatcher._execute(imsg[0],imsg[1]))
+			_logger.info('RMessage: %s' % (rmsg,))
+			outq.put(rmsg) 
+		except:
+			e = traceback.format_exc()
+			_logger.critical(e)
+			outq.put(rmsg.extend(['E', e]))
+
+def qhandle(key,mask):
+	#print('qhandle',key,mask)
+	inq.put([key,mask])
+
+		
 def accept(key,mask):
 	conn, addr = __list_sockets__[key.fd]['socket'].accept()
-	conn.setblocking(False)
+	conn.setblocking(True)
+	conn.settimeout(900)
+	conn.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,True)
 	server = Server()
 	server.packer = Packer()
 	server.rfile = conn.makefile(mode='rb', buffering = -1)
@@ -142,11 +168,8 @@ def accept(key,mask):
 	epoll.register(conn.fileno(),selectors.EVENT_READ,qhandle)
 	_logger.info(_("Connect on host %s port %s") % (ci[0],ci[1]))
 
-pool = Pool(initializer=initializer)
-q = queue.LifoQueue()
-
 def main():
-	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False,'handler':handle}}
+	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False}}
 	pwd = os.getcwd()
 	CONFIG_PATH= opj(pwd,'conf')
 	CONFIG_FILE = opj(pwd,'conf/gsrp-listener.conf')
@@ -181,7 +204,7 @@ def main():
 			if __list_servicies__[key]['allow_reuse_address']:
 				s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
 			s.bind((config[key]['host'],config[key]['port']))
-			s.listen(5)
+			s.listen(2)
 			__list_sockets__[s.fileno()] = {'socket':s,'service':key}
 			s.setblocking(False)
 			epoll.register(s.fileno(),selectors.EVENT_READ,accept)
@@ -189,14 +212,21 @@ def main():
 
 	if __list_sockets__.keys().__len__() > 0:
 		for i in range(cpu_count()*2):
-			process = threading.Thread(target=thandle,name='handle- %03s' % i,daemon=False)
-			process.start()
+			tin = threading.Thread(group=None,target=inqHandle,name='inqhandle- %03s' % i,args=(inq,pinq),daemon=False)
+			tin.start()
+			tout = threading.Thread(group=None,target=outqHandle,name='outqhandle- %03s' % i,args=(outq,),daemon=False)
+			tout.start()
+			p = Process(group=None,target=pinqHandle,name="worker-%s" % (i,),args=(pinq,outq),kwargs={},daemon=None)
+			p.start()
 
 		while not _is_shutdown:
 			events = epoll.select()
 			for key, mask in events:
-				callback = key.data
-				callback(key,mask)
+				if key.fd in __list_sockets__:
+					callback = key.data
+					callback(key,mask)
+				else:
+					epoll.unregister(key.fd)
 	else:
 		_logger.info(_("Enable services not defined")) 
 

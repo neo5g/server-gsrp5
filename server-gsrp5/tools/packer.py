@@ -73,9 +73,11 @@ class Packer(object):
 		self._ctx['J'] = JsonSerializer()
 
 	def _readfromfp(self, server, fp):
-		self._headers = fp.read(10).decode('utf-8')
-		if self._headers.__len__() != 10:
+		self._headers = fp.read(10)
+		print("_headers",self._headers)
+		if self._headers is None or self._headers.__len__() != 10:
 			return []
+		self._headers = self._headers.decode('utf-8')
 		self._msg_version_protocol = self._headers[:1]
 		self._msg_content_type = self._headers[1:2]
 		self._msg_length = int(self._headers[2:10], base = 16)
@@ -84,9 +86,10 @@ class Packer(object):
 		if request.tell() == 0:
 			server._BaseServer__shutdown_request = True
 			_logger.info(_("Error reading socket. Connection closed host:%s port:%s") % (self.connection.getpeername()))
+			return []
 		elif  request.tell() != self._msg_length:
 			_logger.info(_("Error reading socket host:%s port:%s") % (self.connection.getpeername()))
-			request.truncate()
+			return []
 		else:
 			request.seek(0,0)
 			return self._ctx[self._msg_content_type].load(request)
