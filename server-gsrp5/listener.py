@@ -73,23 +73,21 @@ inq = Queue()
 pinq = Queue()
 outq = Queue()
 
-lock = threading.Lock()
+#lock = threading.Lock()
 
 
 # Start of new handlers
 
 def inqHandle(inq,pinq):
 	while True:		
-		lock.acquire()
 		km = inq.get()
 		if km is None:
-			lock.release()
 			break
 		#lock.acquire()
 		key,mask = km
-		print("key.fd in __list_sockets__",key.fd,key.fd in __list_sockets__)
+		print("key.fd in __list_sockets__",key.fd,key.fd in __list_sockets__,key)
 		if not key.fd in __list_sockets__:
-			lock.release()
+			#lock.release()
 			continue
 		server = __list_sockets__[key.fd]['server']
 		print("server",server)
@@ -99,20 +97,22 @@ def inqHandle(inq,pinq):
 			server.rfile.close()
 			server.wfile.flush()
 			server.wfile.close()
-			obj = __list_sockets__[key.fd]
+			obj = __list_sockets__[key.fileobj]
 			obj['socket'].close()
 			epoll.unregister(key.fd)
 			_logger.info('Connection closed host %s port %s' % (obj['info'][0],obj['info'][1]))
 			if key.fd in __list_sockets__:
 				del __list_sockets__[key.fd]
 				print("unregister:\n",key.fd,'\n',__list_sockets__,'\n')
-			lock.release()
+			#lock.release()
 			continue
 
 		imsg = [key.fd]
 		imsg.extend(msg)	
 		pinq.put(imsg)
-		lock.release()
+		e=epoll.register(__list_sockets__[key.fd]['socket'],selectors.EVENT_READ,key.data)
+		print("EEEE:",e)
+		#lock.release()
 
 def outqHandle(poutq):
 
@@ -151,6 +151,7 @@ def pinqHandle(pinq,outq):
 
 def qhandle(key,mask):
 	#print('qhandle',key,mask)
+	epoll.unregister(key.fileobj)
 	inq.put([key,mask])
 
 		
@@ -164,8 +165,9 @@ def accept(key,mask):
 	server.rfile = conn.makefile(mode='rb', buffering = -1)
 	server.wfile = conn.makefile(mode='wb', buffering = 0)
 	ci = conn.getsockname()
-	__list_sockets__[conn.fileno()] = {'socket':conn,'server':server,'address':addr,'info':ci}
-	epoll.register(conn.fileno(),selectors.EVENT_READ,qhandle)
+	key = epoll.register(conn,selectors.EVENT_READ,qhandle)
+	print("KEY:",key)
+	__list_sockets__[key.fd] = {'socket':conn,'server':server,'address':addr,'info':ci}
 	_logger.info(_("Connect on host %s port %s") % (ci[0],ci[1]))
 
 def main():
@@ -204,10 +206,12 @@ def main():
 			if __list_servicies__[key]['allow_reuse_address']:
 				s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
 			s.bind((config[key]['host'],config[key]['port']))
-			s.listen(2)
+			s.listen(5)
 			__list_sockets__[s.fileno()] = {'socket':s,'service':key}
 			s.setblocking(False)
-			epoll.register(s.fileno(),selectors.EVENT_READ,accept)
+			reg =  epoll.register(s,selectors.EVENT_READ,accept)
+			print("reg",reg)
+			__list_sockets__[reg.fd] = {'socket':s,'service':key}
 			_logger.info(_("service %s running on %s port %s") % (key, config[key]['host'], config[key]['port'])) 
 
 	if __list_sockets__.keys().__len__() > 0:
