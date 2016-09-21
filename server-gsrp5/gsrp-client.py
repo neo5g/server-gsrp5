@@ -10,10 +10,11 @@ msgs.append([['db.pgdb.login'],{'dsn':None,'database':'system' ,'user':'root','h
 msgs.append([['db.pgdb.logout']])
 s = cli(('localhost',8170))
 for msg in msgs:
-	print('MSG:',msg)
-	rc = s.handle(msg)
-	if rc:
-		print('RC:',rc)
-	else:
-		print('RC:',rc)
+	for i in range(1000):
+		print('MSG:',msg)
+		rc = s.handle(msg)
+		if rc:
+			print('RC:',rc)
+		else:
+			print('RC:',rc)
 s.client_close()

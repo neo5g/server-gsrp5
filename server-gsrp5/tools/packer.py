@@ -74,7 +74,7 @@ class Packer(object):
 
 	def _readfromfp(self, server, fp):
 		self._headers = fp.read(10)
-		print("_headers",self._headers)
+		#print("_headers",self._headers)
 		if self._headers is None or self._headers.__len__() != 10:
 			return []
 		self._headers = self._headers.decode('utf-8')

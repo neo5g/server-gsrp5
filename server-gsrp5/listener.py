@@ -78,6 +78,34 @@ outq = Queue()
 
 # Start of new handlers
 
+
+def tHandle(pinq,nf):
+	epoll = _ServerSelector()
+	epoll.register(__list_sockets__[nf]['socket'],selectors.EVENT_READ)
+	server = __list_sockets__[nf]['server']
+	#print("server",server)
+	while True:		
+		epoll.select(900)
+		msg = server.packer._readfromfp(server, server.rfile)
+		if len(msg) == 0:
+			#print("close:",nf)
+			epoll.unregister(__list_sockets__[nf]['socket'])
+			epoll.close()
+			server.rfile.close()
+			server.wfile.flush()
+			server.wfile.close()
+			obj = __list_sockets__[nf]
+			obj['socket'].close()
+			_logger.info('Connection closed host %s port %s' % (obj['info'][0],obj['info'][1]))
+			if nf in __list_sockets__:
+				del __list_sockets__[nf]
+				#print("unregister:\n",nf,'\n',__list_sockets__,'\n')
+			break
+
+		imsg = [nf]
+		imsg.extend(msg)	
+		pinq.put(imsg)
+
 def inqHandle(inq,pinq):
 	while True:		
 		km = inq.get()
@@ -94,12 +122,12 @@ def inqHandle(inq,pinq):
 		msg = server.packer._readfromfp(server, server.rfile)
 		if len(msg) == 0:
 			print("close:",key.fd)
+			epoll.unregister(key.fileobj)
 			server.rfile.close()
 			server.wfile.flush()
 			server.wfile.close()
-			obj = __list_sockets__[key.fileobj]
+			obj = __list_sockets__[key.fd]
 			obj['socket'].close()
-			epoll.unregister(key.fd)
 			_logger.info('Connection closed host %s port %s' % (obj['info'][0],obj['info'][1]))
 			if key.fd in __list_sockets__:
 				del __list_sockets__[key.fd]
@@ -122,7 +150,7 @@ def outqHandle(poutq):
 			break
 		chan = msg[0]
 		rmsg = msg[1:]
-		print("CHAN",chan,rmsg)
+		#print("CHAN",chan,rmsg)
 		server = __list_sockets__[chan]['server']
 		server.packer._writetofp(rmsg, server.wfile)
 		
@@ -165,10 +193,13 @@ def accept(key,mask):
 	server.rfile = conn.makefile(mode='rb', buffering = -1)
 	server.wfile = conn.makefile(mode='wb', buffering = 0)
 	ci = conn.getsockname()
-	key = epoll.register(conn,selectors.EVENT_READ,qhandle)
-	print("KEY:",key)
-	__list_sockets__[key.fd] = {'socket':conn,'server':server,'address':addr,'info':ci}
+	#key = epoll.register(conn,selectors.EVENT_READ,qhandle)
+	#print("CONN:",conn.fileno())
+	__list_sockets__[conn.fileno()] = {'socket':conn,'server':server,'address':addr,'info':ci}
 	_logger.info(_("Connect on host %s port %s") % (ci[0],ci[1]))
+	th = threading.Thread(group=None,target=tHandle,name='inqhandle- %03s' % conn.fileno(),args=(pinq,conn.fileno()),daemon=False)
+	th.start()
+
 
 def main():
 	__list_servicies__ = {'tcprpc':{'address_family':socket.AF_INET,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False},'tcpv6rpc':{'address_family':socket.AF_INET6,'socket_type':socket.SOCK_STREAM,'allow_reuse_address':False}}
@@ -199,7 +230,7 @@ def main():
 	_logger.setLevel(logging.INFO)
 	_logger.addHandler(streamhandler)
 	_logger.addHandler(rotatingfilehandler)
-
+	threads = []
 	for key in config['globals'].keys():
 		if key in ('tcprpc','tcpv6rpc') and config['globals'][key]:
 			s=socket.socket(__list_servicies__[key]['address_family'],__list_servicies__[key]['socket_type'])
@@ -210,27 +241,30 @@ def main():
 			__list_sockets__[s.fileno()] = {'socket':s,'service':key}
 			s.setblocking(False)
 			reg =  epoll.register(s,selectors.EVENT_READ,accept)
-			print("reg",reg)
+			#print("reg",reg)
 			__list_sockets__[reg.fd] = {'socket':s,'service':key}
 			_logger.info(_("service %s running on %s port %s") % (key, config[key]['host'], config[key]['port'])) 
 
 	if __list_sockets__.keys().__len__() > 0:
 		for i in range(cpu_count()*2):
-			tin = threading.Thread(group=None,target=inqHandle,name='inqhandle- %03s' % i,args=(inq,pinq),daemon=False)
-			tin.start()
-			tout = threading.Thread(group=None,target=outqHandle,name='outqhandle- %03s' % i,args=(outq,),daemon=False)
-			tout.start()
-			p = Process(group=None,target=pinqHandle,name="worker-%s" % (i,),args=(pinq,outq),kwargs={},daemon=None)
-			p.start()
+			#tin = threading.Thread(group=None,target=inqHandle,name='inqhandle- %03s' % i,args=(inq,pinq),daemon=False)
+			#tin.start()
+			threads.append(threading.Thread(group=None,target=outqHandle,name='outqhandle- %03s' % i,args=(outq,),daemon=False))
+			#tout.start()
+			threads.append(Process(group=None,target=pinqHandle,name="worker-%s" % (i,),args=(pinq,outq),kwargs={},daemon=None))
+			#p.start()
+		for thread in threads:
+			thread.start()
 
 		while not _is_shutdown:
-			events = epoll.select()
+			events = epoll.select(900)
 			for key, mask in events:
+				#print("key",key)
 				if key.fd in __list_sockets__:
 					callback = key.data
 					callback(key,mask)
 				else:
-					epoll.unregister(key.fd)
+					epoll.unregister(key.fileobj)
 	else:
 		_logger.info(_("Enable services not defined")) 
 
