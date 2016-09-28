@@ -82,7 +82,7 @@ class Dispatcher(object):
 					#setattr(getattr(m, k, None),'_dispatcher', self)
 					#setattr(getattr(m, k, None),'_dispatch', self._dispatch)
 		
-		self.db._switch['db']['pgdb'] = self.db.pgdb
+		self.db._switch['db']['cockroachdb'] = self.db.cockroachdb
 		self._registry = Registry(self,gsrp_root)
 		
 	def _execute(self, args, kwargs = None):

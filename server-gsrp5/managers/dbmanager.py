@@ -12,7 +12,7 @@ class dbManager(Manager):
 	_dbmanager = 'pgdb'
 	
 	def __init__(self):
-	    self._switch['db'] = {'pgdb':None,'oradb':None}
+	    self._switch['db'] = {'pgdb':None,'oradb':None,'cocroachdb':None}
 	    super(dbManager, self).__init__()
 
 	def __getattr__(self, name):

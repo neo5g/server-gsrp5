@@ -8,6 +8,9 @@ import managers.pgdbddlmanager
 import managers.pgdbmodelmanager
 import managers.pgdbapimanager
 
+import managers.cockroachdbmanager
+import managers.cockroachdbddlmanager
+
 import managers.viewmanager
 import managers.viewmodelmanager
 
