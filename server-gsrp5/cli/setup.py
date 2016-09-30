@@ -1,5 +1,4 @@
 from distutils.core import setup, Extension
-<<<<<<< HEAD
 
 module1 = Extension('SocketClient', sources = ['SocketClient.c'])
 module2 = Extension('addrinfo', sources = ['addrinfo.c'])
@@ -7,7 +6,7 @@ module3 = Extension('packer', sources = ['packer.c'])
 
                     
 setup (name = 'SocketClient', version = '1.0', description = 'Sockets of client package',ext_modules = [module1,module2,module3])
-=======
+
 import os
 import sys
 #os.execvp('cython',['-3','SocketClient.py','addrinfo.py','packer.py'])
@@ -22,5 +21,5 @@ module3 = Extension('packer', sources = ['packer.c'])
 print(ext)
                     
 setup (name = 'SocketClient', version = '1.0', description = 'Sockets of client package',ext_modules = ext)
->>>>>>> d9b7633f5a2a9ef0916e1f5bc9ea5db2bcbec016
+
 

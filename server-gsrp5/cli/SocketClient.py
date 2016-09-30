@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import socket
 import ssl
 try:
@@ -183,15 +181,15 @@ class SSLBaseClient(object):
 		self.socket.close()
 
 	def handle(self, msg):
-		if isinstance(self.socket._sock,socket._socket.socket):
+		if hasattr(self.socket,'_closed') and  not self.socket._closed:
 			return self.requestHandler.handle(msg)
-		elif isinstance(self.socket._sock, socket._socket._closedsocket,) and self.activate:
+		else:
 			try:
 				self.client = socket.socket(self.address_family, self.socket_type)
-				self.socket = ssl.SSLSocket(sock = self.client, keyfile = self.keyfile, certfile = self.certfile, server_side = self.server_side, cert_reqs = self.cert_reqs, ssl_version = self.ssl_version, ca_certs = self.ca_certs, do_handshake_on_connect = self.do_handshake_on_connect, suppress_ragged_eofs = self.suppress_ragged_eofs, ciphers = self.ciphers)
 				self.client_activate()
+				self.socket = ssl.SSLSocket(sock = self.client, keyfile = self.keyfile, certfile = self.certfile, server_side = self.server_side, cert_reqs = self.cert_reqs, ssl_version = self.ssl_version, ca_certs = self.ca_certs, do_handshake_on_connect = self.do_handshake_on_connect, suppress_ragged_eofs = self.suppress_ragged_eofs, ciphers = self.ciphers)
 				return self.requestHandler.handle(msg)
-			except (socket.error,socket.timeot):
+			except (socket.error,socket.timeout):
 				_logger.error(_('Error connect to server host:%s port:%s') % (self.server_address[0],self.server_address[1]))
 
 
